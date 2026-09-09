@@ -26,7 +26,7 @@ function App() {
 
       <section className="hero" aria-label="Memecoin landing page">
         <div className="hero-copy">
-          <p className="eyebrow">drink.miono.live presents</p>
+          <p className="eyebrow">feesys.lol presents</p>
           <h1>THESIS</h1>
           <p className="lede">
             The narrative is lore. The lore is narrative. The thesis is that

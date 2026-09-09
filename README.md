@@ -1,6 +1,6 @@
-# drink.miono.live
+# feesys.lol
 
-This repo powers [https://drink.miono.live](https://drink.miono.live), an obnoxious sarcastic memecoin landing page.
+This repo powers [https://feesys.lol](https://feesys.lol), an obnoxious sarcastic memecoin landing page.
 
 ## For ChatGPT Or Another Coding Assistant
 
@@ -37,7 +37,7 @@ git push origin main
 The server checks GitHub once per minute. After a successful push, wait about a minute and refresh:
 
 ```text
-https://drink.miono.live
+https://feesys.lol
 ```
 
 ## Deployment Details
@@ -49,7 +49,7 @@ Site user: `drink`
 Published folder:
 
 ```text
-/srv/drink/www/drink.miono.live/current
+/srv/drink/www/feesys.lol/current
 ```
 
 Server repo checkout:
@@ -61,10 +61,16 @@ Server repo checkout:
 Deploy helper:
 
 ```bash
-/srv/drink/bin/add-site.sh main drink.miono.live https://github.com/dutchiono/drink-miono-live.git main "npm run build" dist
+/srv/drink/bin/add-site.sh main feesys.lol https://github.com/dutchiono/drink-miono-live.git main "npm run build" dist
 ```
 
 You should not need server access for normal page edits. Only use the server if deployment is broken or the domain changes.
+
+Temporary old URL:
+
+```text
+https://drink.miono.live
+```
 
 ## Changing Domains Later
 

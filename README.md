@@ -1,6 +1,6 @@
 # drink.miono.live
 
-This repo powers [https://drink.miono.live](https://drink.miono.live).
+This repo powers [https://drink.miono.live](https://drink.miono.live), an obnoxious sarcastic memecoin landing page.
 
 ## For ChatGPT Or Another Coding Assistant
 
@@ -16,6 +16,12 @@ Most styling lives here:
 
 ```text
 src/style.css
+```
+
+The mascot image lives here:
+
+```text
+src/assets/thesis-mascot.png
 ```
 
 After making changes, run:

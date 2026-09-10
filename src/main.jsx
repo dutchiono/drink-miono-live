@@ -1,28 +1,28 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import feesysIdol from "./assets/feesys-idol.png";
+import feesysArtifact from "./assets/feesys-artifact.png";
 import "./style.css";
 
 const systemCards = [
   {
-    title: "holder room",
+    title: "holder gate",
     body:
-      "Low-tier holders get the private feed: the place where internal mythology starts collecting fingerprints.",
+      "Wallets sign in, balances set the tier, and the room opens only when the contract says it should.",
   },
   {
-    title: "thesissis desk",
+    title: "thesis desk",
     body:
-      "Bigger holders can publish arguments. Good posts become operating lore; bad posts sit there looking expensive and confused.",
+      "Readers get the room. Larger holders can publish thesis notes that become part of the shared operating memory.",
+  },
+  {
+    title: "treasury rail",
+    body:
+      "The site reads configured wallets and assets from chain. Missing contracts show as missing; fake numbers do not get dressed up.",
   },
   {
     title: "telegram brain",
     body:
-      "The bot carries notes between Telegram and the site so the room has one memory instead of nine screenshots arguing with each other.",
-  },
-  {
-    title: "contract gate",
-    body:
-      "Demo mode is for setup. Once the real token contract is plugged in, the wallet gate reads balances and the fake door becomes a real one.",
+      "The bot carries room memory between Telegram and the site so the lore has one source of truth instead of nine screenshots.",
   },
 ];
 
@@ -77,11 +77,11 @@ const fallbackTreasury = {
     },
   ],
   agents: [
-    { name: "fee watcher", status: "planned", job: "detect treasury inflows and create receipts" },
-    { name: "allocation brain", status: "planned", job: "propose the split and explain why it passed" },
-    { name: "risk officer", status: "planned", job: "block leverage, concentration, bad venues, and fake wrappers" },
+    { name: "fee watcher", status: "awaiting wallet", job: "detect treasury inflows and create receipts" },
+    { name: "allocation brain", status: "policy ready", job: "propose the split and explain why it passed" },
+    { name: "risk officer", status: "rail locked", job: "block leverage, concentration, bad venues, and fake wrappers" },
     { name: "execution clerk", status: "manual approval", job: "submit only approved treasury actions" },
-    { name: "proof printer", status: "planned", job: "publish receipts to the site and Telegram" },
+    { name: "proof printer", status: "awaiting receipts", job: "publish receipts to the site and Telegram" },
   ],
   rails: [
     "no direct dividends or profit promises",
@@ -99,7 +99,7 @@ const initialChat = [
   {
     role: "assistant",
     content:
-      "Lore desk online. Ask me about the thesis and I will pretend the chart whispered it to me.",
+      "Signal desk online. Ask about the thesis and I will act like the chart leaked it to me in confidence.",
   },
 ];
 
@@ -153,11 +153,11 @@ function LoreChat() {
   return (
     <section className="chat-zone" id="chat" aria-label="FEESYS chatbot">
       <div className="chat-copy">
-        <p className="panel-label">LIVE ALF DESK</p>
+        <p className="panel-label">SIGNAL DESK</p>
         <h2>ask the thesis machine</h2>
         <p>
-          It speaks fluent screenshot, says confidence with no source, and
-          refuses to admit the narrative is just lore in a better jacket.
+          It speaks in conviction, refuses to cite sources, and turns group chat
+          fumes into something that sounds almost investable.
         </p>
       </div>
 
@@ -366,7 +366,7 @@ function HolderOS() {
     <section className="aos-zone" id="aos" aria-label="FEESYS agent operating system">
       <div className="aos-header">
         <p className="panel-label">FEESYS AOS</p>
-        <h2>agent operating system</h2>
+        <h2>holder operating room</h2>
         <div className="aos-status">
           <span>gate: {status?.gateMode || "booting"}</span>
           <span>read: {status?.tiers?.read || "?"}</span>
@@ -382,8 +382,8 @@ function HolderOS() {
             <h3>holder gate</h3>
           </div>
           <p>
-            Sign with the wallet, prove the bag, unlock the room. Low tier reads.
-            Bigger tier posts thesissis.
+            Sign with the wallet, prove the bag, unlock the room. Low tier reads;
+            higher tiers publish thesis.
           </p>
           {session ? (
             <div className="wallet-card">
@@ -397,7 +397,7 @@ function HolderOS() {
               </button>
               {status?.demoEnabled ? (
                 <button className="os-button alt" type="button" onClick={demoUnlock} disabled={busy}>
-                  demo unlock
+                  empty-wallet test
                 </button>
               ) : null}
             </div>
@@ -408,7 +408,7 @@ function HolderOS() {
         <article className="aos-panel feed-panel">
           <div className="aos-panel-head">
             <span>02</span>
-            <h3>thesissis board</h3>
+            <h3>thesis board</h3>
           </div>
           <div className="thesis-feed">
             {feed.theses.map((thesis) => (
@@ -423,14 +423,14 @@ function HolderOS() {
             <input
               value={thesisTitle}
               onChange={(event) => setThesisTitle(event.target.value)}
-              placeholder={canPost ? "thesis title" : "poster tier required"}
+              placeholder={canPost ? "thesis title" : "posting tier required"}
               disabled={!canPost || busy}
               maxLength={90}
             />
             <textarea
               value={thesisBody}
               onChange={(event) => setThesisBody(event.target.value)}
-              placeholder={canPost ? "drop thesis" : "hold more to post"}
+              placeholder={canPost ? "publish thesis" : "hold more to post"}
               disabled={!canPost || busy}
               maxLength={1200}
             />
@@ -459,7 +459,7 @@ function HolderOS() {
             <input
               value={chatText}
               onChange={(event) => setChatText(event.target.value)}
-              placeholder={unlocked ? "say holder words" : "holder tier required"}
+              placeholder={unlocked ? "holder message" : "holder tier required"}
               disabled={!unlocked || busy}
               maxLength={700}
             />
@@ -504,11 +504,11 @@ function TreasuryOS() {
     <section className="treasury-zone" id="treasury" aria-label="FEESYS treasury operating system">
       <div className="treasury-lead">
         <p className="panel-label">TREASURY OS</p>
-        <h2>connect the wallet</h2>
+        <h2>token-ready treasury</h2>
         <p>
-          This is wired for the real token, treasury wallet, fee asset, and
-          tokenized stock basket. If a contract is missing, the machine says so
-          instead of inventing numbers.
+          Built for the real token, treasury wallet, fee asset, and tokenized
+          stock basket. If a contract is missing, the dashboard calls it missing
+          instead of inventing a launch story.
         </p>
         <div className="treasury-mode">
           <span>mode: {treasury.mode}</span>
@@ -548,7 +548,7 @@ function TreasuryOS() {
       </div>
 
       <div className="config-panel">
-        <h3>production checklist</h3>
+        <h3>production readiness</h3>
         <div className="config-grid">
           {[
             ["RPC", !treasury.missing.includes("FEESYS_RPC_URL")],
@@ -607,14 +607,14 @@ function App() {
     <main className="page">
       <section className="ticker" aria-label="meme ticker">
         <div>
-          FEESYS AOS *** HOLDERS WRITE THE THESIS *** TELEGRAM REMEMBERS ***
-          THE LORE HAS PERMISSIONS NOW ***
+          FEESYS AOS / HOLDERS WRITE THE THESIS / TREASURY READS ON CHAIN /
+          TELEGRAM REMEMBERS / THE LORE HAS PERMISSIONS NOW /
         </div>
       </section>
 
       <nav className="quick-nav" aria-label="FEESYS sections">
-        <a href="#aos">AOS</a>
         <a href="#treasury">treasury</a>
+        <a href="#aos">AOS</a>
         <a href="#chat">AI chat</a>
         <a href="#lore">lore</a>
         <a href="#system">map</a>
@@ -625,43 +625,42 @@ function App() {
           <p className="eyebrow">THE COIN IS $FEESYS</p>
           <h1>FEESYS</h1>
           <p className="lede">
-            The thesis is simple: the narrative became lore before the market
-            noticed. $FEESYS is not a token, it is a positioning event with
-            asymmetric meme velocity.
+            A holder-gated command layer for the token, the treasury, and the
+            lore machine. The joke stays unserious; the plumbing does not.
           </p>
           <div className="button-row">
-            <a className="button primary" href="#aos">
-              enter aos
+            <a className="button primary" href="#treasury">
+              treasury readiness
             </a>
-            <a className="button secondary" href="#chat">
-              ask thesis ai
+            <a className="button secondary" href="#aos">
+              open holder gate
             </a>
           </div>
           <div className="stat-strip" aria-label="FEESYS system status">
-            <span>holder gate ready</span>
-            <span>treasury wallet required</span>
-            <span>receipts over promises</span>
+            <span>token gate wired</span>
+            <span>treasury waits for wallet</span>
+            <span>receipts before claims</span>
           </div>
         </div>
         <div className="idol-wrap" aria-label="FEESYS trading shrine">
-          <img src={feesysIdol} alt="Neon FEESYS token shrine with trading screens" />
+          <img src={feesysArtifact} alt="Black-and-gold FEESYS treasury artifact with trading terminals" />
           <div className="artifact-badge">AOS ONLINE</div>
         </div>
       </section>
 
-      <LoreChat />
+      <TreasuryOS />
 
       <HolderOS />
 
-      <TreasuryOS />
+      <LoreChat />
 
       <section className="chaos-grid" id="lore">
         <article className="panel thesis-panel">
           <p className="panel-label">THE THESIS</p>
           <h2>the thesis is the narrative is the lore</h2>
           <p>
-            First, someone says narrative. Then another guy says lore. Then a
-            third guy repeats both slower and everyone calls it alpha.
+            First, someone says narrative. Then someone says lore. Then the room
+            pretends the repetition was strategy.
           </p>
         </article>
 
@@ -676,14 +675,14 @@ function App() {
             <span style={{ "--height": "96%" }} />
             <span style={{ "--height": "68%" }} />
           </div>
-          <strong>chart says the candle understands the assignment</strong>
+          <strong>the candle appears to have read the memo</strong>
         </article>
 
         <article className="panel manifesto-panel">
           <p className="panel-label">MANIFESTO</p>
           <ul>
             <li>price action as personality test</li>
-            <li>conviction without visible infrastructure</li>
+            <li>conviction with receipts attached</li>
             <li>the narrative is pre-revenue</li>
             <li>the lore is accidentally capital efficient</li>
             <li>due diligence performed in public</li>
@@ -696,16 +695,16 @@ function App() {
           <span>01</span>
           <h2>the narrative</h2>
           <p>
-            A sentence that sounds tradable if you type it in all caps and put
-            three lightning bolts after it.
+            A sentence that becomes tradable once enough people repeat it with
+            a straight face.
           </p>
         </div>
         <div className="stack-card">
           <span>02</span>
           <h2>the lore</h2>
           <p>
-            Screenshot archaeology performed by dudes who say "study this" and
-            then post a picture of a frog wearing sunglasses.
+            Group chat sediment, wallet screenshots, and confidence stacked into
+            something the timeline can recognize.
           </p>
         </div>
         <div className="stack-card">
@@ -713,7 +712,7 @@ function App() {
           <h2>the thesis</h2>
           <p>
             The narrative is lore. The lore is narrative. The thesis is saying
-            both until the chart gets embarrassed and goes vertical.
+            both until the room forgets which one came first.
           </p>
         </div>
       </section>
@@ -721,7 +720,7 @@ function App() {
       <section className="operating-map" id="system" aria-label="FEESYS system map">
         <div className="map-title">
           <p className="panel-label">SYSTEM MAP</p>
-          <h2>how the machine is supposed to work</h2>
+          <h2>how the machine works</h2>
         </div>
         {systemCards.map((card, index) => (
           <article className="map-card" key={card.title}>

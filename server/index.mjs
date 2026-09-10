@@ -130,12 +130,18 @@ async function completeChat(message, history) {
     throw err;
   }
 
+  const headers = {
+    authorization: `Bearer ${key}`,
+    "content-type": "application/json",
+  };
+  if (baseUrl().includes("openrouter.ai")) {
+    headers["http-referer"] = "https://feesys.lol";
+    headers["x-title"] = "FEESYS.LOL";
+  }
+
   const response = await fetch(`${baseUrl()}/chat/completions`, {
     method: "POST",
-    headers: {
-      authorization: `Bearer ${key}`,
-      "content-type": "application/json",
-    },
+    headers,
     body: JSON.stringify({
       model: model(),
       messages: buildMessages(message, history),

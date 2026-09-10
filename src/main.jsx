@@ -7,7 +7,7 @@ const systemCards = [
   {
     title: "holder room",
     body:
-      "Low-tier holders get the private feed. Not a billboard, not a sticker pile, just the place where the internal mythology starts collecting fingerprints.",
+      "Low-tier holders get the private feed: the place where internal mythology starts collecting fingerprints.",
   },
   {
     title: "thesissis desk",
@@ -28,7 +28,7 @@ const systemCards = [
 
 const starterQuestions = [
   "what is the thesis",
-  "is this alf",
+  "read the room",
   "explain the lore",
 ];
 
@@ -504,11 +504,11 @@ function App() {
         <article className="panel manifesto-panel">
           <p className="panel-label">MANIFESTO</p>
           <ul>
-            <li>it could send hard</li>
-            <li>might be alf</li>
+            <li>price action as personality test</li>
+            <li>conviction without visible infrastructure</li>
             <li>the narrative is pre-revenue</li>
             <li>the lore is accidentally capital efficient</li>
-            <li>trust me bro</li>
+            <li>due diligence performed in public</li>
           </ul>
         </article>
       </section>
@@ -542,7 +542,7 @@ function App() {
 
       <section className="operating-map" id="system" aria-label="FEESYS system map">
         <div className="map-title">
-          <p className="panel-label">NOT A STICKER WALL</p>
+          <p className="panel-label">SYSTEM MAP</p>
           <h2>how the machine is supposed to work</h2>
         </div>
         {systemCards.map((card, index) => (

@@ -151,7 +151,7 @@ FEESYS_BOT_SHARED_SECRET=...
 Temporary old URL:
 
 ```text
-https://drink.miono.live
+https://feesys.lol
 ```
 
 ## Changing Domains Later

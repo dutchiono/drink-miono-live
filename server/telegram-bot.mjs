@@ -9,6 +9,7 @@ if (!TOKEN || !SECRET) {
 }
 
 let offset = 0;
+let botUsername = "";
 
 async function telegram(method, payload = {}) {
   const res = await fetch(`https://api.telegram.org/bot${TOKEN}/${method}`, {
@@ -38,6 +39,30 @@ async function say(chatId, text) {
   });
 }
 
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeText(rawText) {
+  let text = rawText.trim();
+  if (botUsername) {
+    text = text.replace(new RegExp(`@${escapeRegex(botUsername)}\\b`, "gi"), "").trim();
+  }
+  return text;
+}
+
+function isCommand(text, command) {
+  const lower = text.toLowerCase();
+  return lower === command || (botUsername && lower === `${command}@${botUsername}`);
+}
+
+function commandPayload(text, command) {
+  const escapedCommand = escapeRegex(command);
+  const suffix = botUsername ? `(?:@${escapeRegex(botUsername)})?` : "(?:@[A-Za-z0-9_]+)?";
+  const match = text.match(new RegExp(`^${escapedCommand}${suffix}\\s+([\\s\\S]+)$`, "i"));
+  return match?.[1]?.trim() || "";
+}
+
 function summarizeFeed(feed) {
   const thesis = feed.theses?.slice(-1)[0];
   const note = feed.telegramNotes?.slice(-1)[0];
@@ -56,11 +81,17 @@ function summarizeFeed(feed) {
 async function handleMessage(update) {
   const msg = update.message;
   if (!msg?.chat?.id || !msg.text) return;
-  const text = msg.text.trim();
+  const rawText = msg.text.trim();
+  const text = normalizeText(rawText);
   const chatId = msg.chat.id;
   const author = msg.from?.username ? `@${msg.from.username}` : String(msg.from?.id || "telegram");
 
-  if (text === "/start" || text === "/help") {
+  if (!text) {
+    await say(chatId, "say /status, /note <text>, or ask the machine a question.");
+    return;
+  }
+
+  if (isCommand(rawText, "/start") || isCommand(rawText, "/help")) {
     await say(chatId, [
       "FEESYS AOS telegram terminal.",
       "/status shows the public operating-system state.",
@@ -69,7 +100,7 @@ async function handleMessage(update) {
     return;
   }
 
-  if (text === "/status") {
+  if (isCommand(rawText, "/status")) {
     const feed = await local("/api/os/telegram-feed", {
       headers: { "x-feesys-bot-secret": SECRET },
     });
@@ -77,8 +108,8 @@ async function handleMessage(update) {
     return;
   }
 
-  if (text.startsWith("/note ")) {
-    const note = text.slice(6).trim();
+  const note = commandPayload(rawText, "/note");
+  if (note) {
     await local("/api/os/telegram-note", {
       method: "POST",
       headers: {
@@ -125,7 +156,13 @@ await telegram("deleteWebhook", { drop_pending_updates: false }).catch((error) =
   console.error("telegram webhook cleanup failed", error.message);
 });
 
-console.log("feesys telegram bot polling");
+const me = await telegram("getMe").catch((error) => {
+  console.error("telegram identity lookup failed", error.message);
+  return null;
+});
+botUsername = me?.username?.toLowerCase() || "";
+
+console.log(`feesys telegram bot polling${botUsername ? ` as @${botUsername}` : ""}`);
 while (true) {
   await poll();
   await new Promise((resolve) => setTimeout(resolve, POLL_MS));

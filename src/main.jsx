@@ -15,6 +15,126 @@ const chants = [
   "utility is saying utility",
 ];
 
+const starterQuestions = [
+  "what is the thesis",
+  "is this alf",
+  "explain the lore",
+];
+
+const initialChat = [
+  {
+    role: "assistant",
+    content:
+      "Lore desk online. Ask me about the thesis and I will pretend the chart whispered it to me.",
+  },
+];
+
+function LoreChat() {
+  const [messages, setMessages] = React.useState(initialChat);
+  const [input, setInput] = React.useState("");
+  const [status, setStatus] = React.useState("idle");
+
+  const sendMessage = async (text = input) => {
+    const message = text.trim();
+    if (!message || status === "loading") return;
+
+    const nextMessages = [...messages, { role: "user", content: message }];
+    setMessages(nextMessages);
+    setInput("");
+    setStatus("loading");
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          message,
+          history: messages.slice(-8),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "chat offline");
+      setMessages([
+        ...nextMessages,
+        { role: "assistant", content: data.text || "the lore went sideways" },
+      ]);
+      setStatus("idle");
+    } catch {
+      setMessages([
+        ...nextMessages,
+        {
+          role: "assistant",
+          content:
+            "The lore desk rugged itself. The thesis still exists, probably.",
+        },
+      ]);
+      setStatus("error");
+    }
+  };
+
+  return (
+    <section className="chat-zone" aria-label="FEESYS chatbot">
+      <div className="chat-copy">
+        <p className="panel-label">LIVE ALF DESK</p>
+        <h2>ask the thesis machine</h2>
+        <p>
+          It speaks fluent screenshot, says confidence with no source, and
+          refuses to admit the narrative is just lore in a better jacket.
+        </p>
+      </div>
+
+      <div className="chat-panel">
+        <div className="chat-topline">
+          <strong>$FEESYS reply terminal</strong>
+          <span className={status === "loading" ? "blink" : ""}>
+            {status === "loading" ? "typing..." : "online"}
+          </span>
+        </div>
+
+        <div className="chat-log" aria-live="polite">
+          {messages.map((message, index) => (
+            <div className={`chat-bubble ${message.role}`} key={index}>
+              {message.content}
+            </div>
+          ))}
+        </div>
+
+        <div className="prompt-row" aria-label="Suggested prompts">
+          {starterQuestions.map((question) => (
+            <button
+              key={question}
+              type="button"
+              onClick={() => sendMessage(question)}
+              disabled={status === "loading"}
+            >
+              {question}
+            </button>
+          ))}
+        </div>
+
+        <form
+          className="chat-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            sendMessage();
+          }}
+        >
+          <input
+            aria-label="Ask the FEESYS chatbot"
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            placeholder="type lore here"
+            maxLength={280}
+          />
+          <button type="submit" disabled={status === "loading"}>
+            send
+          </button>
+        </form>
+      </div>
+    </section>
+  );
+}
+
 function App() {
   return (
     <main className="page">
@@ -53,6 +173,8 @@ function App() {
           <div className="speech">fee.sys</div>
         </div>
       </section>
+
+      <LoreChat />
 
       <section className="chaos-grid" id="lore">
         <article className="panel thesis-panel">

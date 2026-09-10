@@ -24,6 +24,14 @@ The mascot image lives here:
 src/assets/thesis-mascot.png
 ```
 
+The chatbot page code also lives in `src/main.jsx`. Its private server endpoint lives here:
+
+```text
+server/index.mjs
+```
+
+Do not put model/API keys in `src`, `index.html`, or any file committed to GitHub. The live server keeps the chatbot key in a private environment file and proxies `/api/chat` to the local Node process.
+
 After making changes, run:
 
 ```bash
@@ -55,16 +63,28 @@ Published folder:
 Server repo checkout:
 
 ```text
-/srv/drink/apps/main
+/srv/drink/apps/feesys
 ```
 
 Deploy helper:
 
 ```bash
-/srv/drink/bin/add-site.sh main feesys.lol https://github.com/dutchiono/drink-miono-live.git main "npm run build" dist
+/srv/drink/bin/add-site.sh feesys feesys.lol https://github.com/dutchiono/drink-miono-live.git main "npm run build" dist
 ```
 
 You should not need server access for normal page edits. Only use the server if deployment is broken or the domain changes.
+
+Chatbot service:
+
+```text
+feesys-chat.service
+```
+
+Chatbot health check:
+
+```text
+https://feesys.lol/api/chat/health
+```
 
 Temporary old URL:
 

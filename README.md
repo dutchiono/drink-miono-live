@@ -113,6 +113,23 @@ holder-only chat
 Telegram notes shared into the holder feed
 ```
 
+Treasury OS status:
+
+```text
+https://feesys.lol/api/treasury/status
+```
+
+The treasury section is intentionally framed as proposal, receipts, buybacks,
+liquidity, holder access, and operating budget. Do not promise dividends,
+yield, stock profits, or direct payouts to holders in public copy.
+
+Optional treasury env values:
+
+```text
+FEESYS_TREASURY_WALLET=0x...
+FEESYS_TREASURY_EXECUTION_MODE=proposal-only
+```
+
 The gate stays locked until the private server env has the real token details:
 
 ```text

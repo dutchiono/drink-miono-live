@@ -32,6 +32,50 @@ const starterQuestions = [
   "explain the lore",
 ];
 
+const fallbackTreasury = {
+  mode: "proposal-only",
+  treasuryWallet: "pending",
+  split: [
+    {
+      label: "tokenized RWA basket",
+      percent: 50,
+      role: "stock-like exposure research queue; executed only through approved rails",
+    },
+    {
+      label: "buyback / liquidity",
+      percent: 25,
+      role: "route value into market support instead of promising holder payouts",
+    },
+    {
+      label: "operating reserve",
+      percent: 15,
+      role: "keep the machine funded when the chart starts doing theater",
+    },
+    {
+      label: "agent budget",
+      percent: 10,
+      role: "pay the watchers, proof posts, Telegram brain, and weird experiments",
+    },
+  ],
+  agents: [
+    { name: "fee watcher", status: "planned", job: "detect treasury inflows and create receipts" },
+    { name: "allocation brain", status: "planned", job: "propose the split and explain why it passed" },
+    { name: "risk officer", status: "planned", job: "block leverage, concentration, bad venues, and fake wrappers" },
+    { name: "execution clerk", status: "manual approval", job: "submit only approved treasury actions" },
+    { name: "proof printer", status: "planned", job: "publish receipts to the site and Telegram" },
+  ],
+  rails: [
+    "no direct dividends or profit promises",
+    "no leverage",
+    "no unverified tokenized stock wrappers",
+    "no single exposure over the posted cap",
+    "no silent trades: every action gets a receipt",
+    "human multisig approval before live execution",
+  ],
+  holderBenefit:
+    "Treasury upside is routed through public buybacks, liquidity, holder access, and operating budget. The site does not promise distributions.",
+};
+
 const initialChat = [
   {
     role: "assistant",
@@ -427,6 +471,85 @@ function HolderOS() {
   );
 }
 
+function TreasuryOS() {
+  const [treasury, setTreasury] = React.useState(fallbackTreasury);
+  const [feeAmount, setFeeAmount] = React.useState("10000");
+  const numericFees = Math.max(0, Number(feeAmount) || 0);
+
+  React.useEffect(() => {
+    fetch("/api/treasury/status")
+      .then((res) => res.json())
+      .then((data) => setTreasury({ ...fallbackTreasury, ...data }))
+      .catch(() => setTreasury(fallbackTreasury));
+  }, []);
+
+  return (
+    <section className="treasury-zone" id="treasury" aria-label="FEESYS treasury operating system">
+      <div className="treasury-lead">
+        <p className="panel-label">TREASURY OS</p>
+        <h2>fees enter the machine</h2>
+        <p>
+          Trading fees become transparent treasury actions. The allocation brain
+          can recommend stock-like onchain exposure, but the risk officer keeps
+          it inside posted rails and the proof printer makes receipts public.
+        </p>
+        <div className="treasury-mode">
+          <span>mode: {treasury.mode}</span>
+          <span>wallet: {treasury.treasuryWallet}</span>
+        </div>
+      </div>
+
+      <div className="fee-console">
+        <label htmlFor="fee-amount">sample fee intake</label>
+        <div className="fee-input-row">
+          <input
+            id="fee-amount"
+            value={feeAmount}
+            onChange={(event) => setFeeAmount(event.target.value)}
+            inputMode="decimal"
+            aria-label="Sample treasury fee amount"
+          />
+          <span>USDC-ish units</span>
+        </div>
+        <div className="allocation-bars">
+          {treasury.split.map((bucket) => (
+            <div className="allocation-row" key={bucket.label}>
+              <div className="allocation-copy">
+                <strong>{bucket.label}</strong>
+                <span>{bucket.percent}% / {(numericFees * bucket.percent / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+              </div>
+              <div className="allocation-track" aria-hidden="true">
+                <i style={{ "--fill": `${bucket.percent}%` }} />
+              </div>
+              <p>{bucket.role}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="agent-board">
+        {treasury.agents.map((agent) => (
+          <article className="agent-card" key={agent.name}>
+            <span>{agent.status}</span>
+            <h3>{agent.name}</h3>
+            <p>{agent.job}</p>
+          </article>
+        ))}
+      </div>
+
+      <div className="rails-panel">
+        <h3>hard rails</h3>
+        <ul>
+          {treasury.rails.map((rail) => (
+            <li key={rail}>{rail}</li>
+          ))}
+        </ul>
+        <p>{treasury.holderBenefit}</p>
+      </div>
+    </section>
+  );
+}
+
 function App() {
   return (
     <main className="page">
@@ -439,6 +562,7 @@ function App() {
 
       <nav className="quick-nav" aria-label="FEESYS sections">
         <a href="#aos">AOS</a>
+        <a href="#treasury">treasury</a>
         <a href="#chat">AI chat</a>
         <a href="#lore">lore</a>
         <a href="#system">map</a>
@@ -463,7 +587,7 @@ function App() {
           </div>
           <div className="stat-strip" aria-label="Important fake stats">
             <span>100x pending</span>
-            <span>0 utility detected</span>
+            <span>treasury brain loading</span>
             <span>12 tabs of alpha</span>
           </div>
         </div>
@@ -476,6 +600,8 @@ function App() {
       <LoreChat />
 
       <HolderOS />
+
+      <TreasuryOS />
 
       <section className="chaos-grid" id="lore">
         <article className="panel thesis-panel">

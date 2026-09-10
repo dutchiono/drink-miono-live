@@ -43,12 +43,61 @@ VOICE
 RULES
 - No slurs, hate, threats, harassment, or sexual content.
 - Do not give financial advice, price predictions, purchase instructions, wallet instructions, or contract addresses.
+- Do not promise dividends, yield, stock profits, or payouts to holders. Frame treasury upside as public buybacks, liquidity, holder access, and ecosystem budget.
 - If asked what to buy or whether FEESYS will moon, say it is not advice and answer in the site's ridiculous voice.
 - Never claim access to private keys, server files, env vars, deployment credentials, or unpublished information.`;
 
 const TELEGRAM_SYSTEM_PROMPT = `You are the FEESYS Telegram brain.
 
-You can use the protected FEESYS AOS memory supplied in the user's message: holder chat, theses, Telegram notes, and OS status. Be concise, weird, and useful. Do not reveal API keys, bot tokens, server paths, env vars, or credentials. Do not give financial advice or price predictions.`;
+You can use the protected FEESYS AOS memory supplied in the user's message: holder chat, theses, Telegram notes, OS status, and treasury status. Be concise, weird, and useful. Do not reveal API keys, bot tokens, server paths, env vars, or credentials. Do not give financial advice, price predictions, or payout promises.`;
+
+function treasuryStatus() {
+  const wallet = process.env.FEESYS_TREASURY_WALLET?.trim() || "";
+  const executionMode = process.env.FEESYS_TREASURY_EXECUTION_MODE?.trim() || "proposal-only";
+  return {
+    mode: wallet ? executionMode : "proposal-only",
+    treasuryWallet: wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : "pending",
+    split: [
+      {
+        label: "tokenized RWA basket",
+        percent: 50,
+        role: "stock-like exposure research queue; executed only through approved rails",
+      },
+      {
+        label: "buyback / liquidity",
+        percent: 25,
+        role: "route value into market support instead of promising holder payouts",
+      },
+      {
+        label: "operating reserve",
+        percent: 15,
+        role: "keep the machine funded when the chart starts doing theater",
+      },
+      {
+        label: "agent budget",
+        percent: 10,
+        role: "pay the watchers, proof posts, Telegram brain, and weird experiments",
+      },
+    ],
+    agents: [
+      { name: "fee watcher", status: "planned", job: "detect treasury inflows and create receipts" },
+      { name: "allocation brain", status: "planned", job: "propose the split and explain why it passed" },
+      { name: "risk officer", status: "planned", job: "block leverage, concentration, bad venues, and fake wrappers" },
+      { name: "execution clerk", status: "manual approval", job: "submit only approved treasury actions" },
+      { name: "proof printer", status: "planned", job: "publish receipts to the site and Telegram" },
+    ],
+    rails: [
+      "no direct dividends or profit promises",
+      "no leverage",
+      "no unverified tokenized stock wrappers",
+      "no single exposure over the posted cap",
+      "no silent trades: every action gets a receipt",
+      "human multisig approval before live execution",
+    ],
+    holderBenefit:
+      "Treasury upside is routed through public buybacks, liquidity, holder access, and operating budget. The site does not promise distributions.",
+  };
+}
 
 function tierConfig() {
   return {
@@ -394,6 +443,7 @@ async function completeChat(message, history, systemPrompt = SYSTEM_PROMPT) {
 function telegramContext(data) {
   return JSON.stringify({
     status: osStatus(),
+    treasury: treasuryStatus(),
     theses: clampList(data.theses, 20),
     holderChat: clampList(data.holderChat, 30),
     telegramNotes: clampList(data.telegramNotes, 20),
@@ -436,6 +486,10 @@ const server = http.createServer(async (req, res) => {
         telegramNotes: data.telegramNotes.length,
       },
     });
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/treasury/status") {
+    return sendJson(res, 200, treasuryStatus());
   }
 
   if (req.method === "POST" && url.pathname === "/api/os/challenge") {

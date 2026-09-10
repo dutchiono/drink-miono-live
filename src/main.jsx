@@ -30,9 +30,9 @@ function App() {
           <p className="eyebrow">THE COIN IS $FEESYS</p>
           <h1>FEESYS</h1>
           <p className="lede">
-            A coin for the guys who say "the thesis" like they found buried
-            treasure in a Telegram screenshot. No product. No math. Just lore
-            wearing a tiny fake mustache called narrative.
+            The thesis is simple: the narrative became lore before the market
+            noticed. $FEESYS is not a token, it is a positioning event with
+            asymmetric meme velocity.
           </p>
           <div className="button-row">
             <a className="button primary" href="#buy">

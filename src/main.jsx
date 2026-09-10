@@ -3,16 +3,27 @@ import { createRoot } from "react-dom/client";
 import thesisMascot from "./assets/thesis-mascot.png";
 import "./style.css";
 
-const chants = [
-  "the thesis is that the narrative is lore",
-  "might be alf",
-  "could send hard",
-  "trust me bro",
-  "fee.sys",
-  "roadmap pending vibes",
-  "alpha? no, alf",
-  "source: group chat",
-  "utility is saying utility",
+const systemCards = [
+  {
+    title: "holder room",
+    body:
+      "Low-tier holders get the private feed. Not a billboard, not a sticker pile, just the place where the internal mythology starts collecting fingerprints.",
+  },
+  {
+    title: "thesissis desk",
+    body:
+      "Bigger holders can publish arguments. Good posts become operating lore; bad posts sit there looking expensive and confused.",
+  },
+  {
+    title: "telegram brain",
+    body:
+      "The bot carries notes between Telegram and the site so the room has one memory instead of nine screenshots arguing with each other.",
+  },
+  {
+    title: "contract gate",
+    body:
+      "Demo mode is for setup. Once the real token contract is plugged in, the wallet gate reads balances and the fake door becomes a real one.",
+  },
 ];
 
 const starterQuestions = [
@@ -77,7 +88,7 @@ function LoreChat() {
   };
 
   return (
-    <section className="chat-zone" aria-label="FEESYS chatbot">
+    <section className="chat-zone" id="chat" aria-label="FEESYS chatbot">
       <div className="chat-copy">
         <p className="panel-label">LIVE ALF DESK</p>
         <h2>ask the thesis machine</h2>
@@ -151,8 +162,8 @@ function HolderOS() {
 
   const sessionToken = session?.token || localStorage.getItem("feesysSession") || "";
 
-  const loadFeed = React.useCallback(async () => {
-    const headers = sessionToken ? { authorization: `Bearer ${sessionToken}` } : {};
+  const loadFeed = React.useCallback(async (token = sessionToken) => {
+    const headers = token ? { authorization: `Bearer ${token}` } : {};
     const [statusRes, feedRes] = await Promise.all([
       fetch("/api/os/status"),
       fetch("/api/os/feed", { headers }),
@@ -161,7 +172,10 @@ function HolderOS() {
     const nextFeed = await feedRes.json();
     setFeed(nextFeed);
     if (nextFeed.session) {
-      setSession((current) => ({ ...current, ...nextFeed.session, token: sessionToken }));
+      setSession((current) => ({ ...current, ...nextFeed.session, token }));
+    } else if (token) {
+      localStorage.removeItem("feesysSession");
+      setSession(null);
     }
   }, [sessionToken]);
 
@@ -169,13 +183,39 @@ function HolderOS() {
     loadFeed().catch(() => setOsMessage("AOS boot failed. thesis remains local."));
   }, [loadFeed]);
 
+  const activateSession = async (nextSession) => {
+    localStorage.setItem("feesysSession", nextSession.token);
+    setSession(nextSession);
+    setOsMessage(
+      nextSession.source === "demo"
+        ? "demo holder mode is open until the real token gate goes live"
+        : nextSession.tier === "none"
+          ? "wallet verified, but the bag is below the read tier"
+          : "wallet verified. the door made a weird noise and opened.",
+    );
+    await loadFeed(nextSession.token);
+  };
+
+  const demoUnlock = async () => {
+    setBusy(true);
+    setOsMessage("");
+    try {
+      const sessionRes = await fetch("/api/os/demo-session", { method: "POST" });
+      const nextSession = await sessionRes.json();
+      if (!sessionRes.ok) throw new Error(nextSession.error || "demo unlock failed");
+      await activateSession(nextSession);
+    } catch (error) {
+      setOsMessage(error.message || "demo unlock failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const connectWallet = async () => {
     setBusy(true);
     setOsMessage("");
     try {
-      if (!window.ethereum) {
-        throw new Error("No wallet browser found. Open this in a wallet browser.");
-      }
+      if (!window.ethereum) return await demoUnlock();
       const [address] = await window.ethereum.request({ method: "eth_requestAccounts" });
       const challengeRes = await fetch("/api/os/challenge", {
         method: "POST",
@@ -195,14 +235,7 @@ function HolderOS() {
       });
       const nextSession = await sessionRes.json();
       if (!sessionRes.ok) throw new Error(nextSession.error || "holder check failed");
-      localStorage.setItem("feesysSession", nextSession.token);
-      setSession(nextSession);
-      setOsMessage(
-        nextSession.tier === "none"
-          ? "wallet verified, but the bag is below the read tier"
-          : "wallet verified. the door made a weird noise and opened.",
-      );
-      await loadFeed();
+      await activateSession(nextSession);
     } catch (error) {
       setOsMessage(error.message || "wallet gate failed");
     } finally {
@@ -267,7 +300,7 @@ function HolderOS() {
   const canPost = ["poster", "operator"].includes(session?.tier);
 
   return (
-    <section className="aos-zone" aria-label="FEESYS agent operating system">
+    <section className="aos-zone" id="aos" aria-label="FEESYS agent operating system">
       <div className="aos-header">
         <p className="panel-label">FEESYS AOS</p>
         <h2>agent operating system</h2>
@@ -295,9 +328,16 @@ function HolderOS() {
               <span>{session.tier} / {Number(session.balance || 0).toLocaleString()} {session.symbol}</span>
             </div>
           ) : (
-            <button className="os-button" type="button" onClick={connectWallet} disabled={busy}>
-              connect wallet
-            </button>
+            <div className="os-button-row">
+              <button className="os-button" type="button" onClick={connectWallet} disabled={busy}>
+                connect wallet
+              </button>
+              {status?.demoEnabled ? (
+                <button className="os-button alt" type="button" onClick={demoUnlock} disabled={busy}>
+                  demo unlock
+                </button>
+              ) : null}
+            </div>
           )}
           {osMessage ? <p className="os-message">{osMessage}</p> : null}
         </article>
@@ -392,10 +432,17 @@ function App() {
     <main className="page">
       <section className="ticker" aria-label="meme ticker">
         <div>
-          THESIS IS THE NARRATIVE IS THE LORE *** TRUST ME BRO *** COULD SEND
-          HARD *** MIGHT BE ALF *** SOURCE: GROUP CHAT ***
+          FEESYS AOS *** HOLDERS WRITE THE THESIS *** TELEGRAM REMEMBERS ***
+          THE LORE HAS PERMISSIONS NOW ***
         </div>
       </section>
+
+      <nav className="quick-nav" aria-label="FEESYS sections">
+        <a href="#aos">AOS</a>
+        <a href="#chat">AI chat</a>
+        <a href="#lore">lore</a>
+        <a href="#system">map</a>
+      </nav>
 
       <section className="hero" aria-label="Memecoin landing page">
         <div className="hero-copy">
@@ -407,11 +454,11 @@ function App() {
             asymmetric meme velocity.
           </p>
           <div className="button-row">
-            <a className="button primary" href="#buy">
-              acquire thesis
+            <a className="button primary" href="#aos">
+              enter aos
             </a>
-            <a className="button secondary" href="#lore">
-              inspect lore
+            <a className="button secondary" href="#chat">
+              ask thesis ai
             </a>
           </div>
           <div className="stat-strip" aria-label="Important fake stats">
@@ -493,9 +540,17 @@ function App() {
         </div>
       </section>
 
-      <section className="chant-wall" id="buy" aria-label="Meme slogans">
-        {chants.map((chant) => (
-          <span key={chant}>{chant}</span>
+      <section className="operating-map" id="system" aria-label="FEESYS system map">
+        <div className="map-title">
+          <p className="panel-label">NOT A STICKER WALL</p>
+          <h2>how the machine is supposed to work</h2>
+        </div>
+        {systemCards.map((card, index) => (
+          <article className="map-card" key={card.title}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <h3>{card.title}</h3>
+            <p>{card.body}</p>
+          </article>
         ))}
       </section>
     </main>

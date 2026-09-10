@@ -91,10 +91,15 @@ async function handleMessage(update) {
     return;
   }
 
-  const feed = await local("/api/os/telegram-feed", {
-    headers: { "x-feesys-bot-secret": SECRET },
+  const answer = await local("/api/os/telegram-chat", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-feesys-bot-secret": SECRET,
+    },
+    body: JSON.stringify({ message: text, author }),
   });
-  await say(chatId, summarizeFeed(feed));
+  await say(chatId, answer.text || "the telegram brain stared at the wall.");
 }
 
 async function poll() {
@@ -115,6 +120,10 @@ async function poll() {
     await new Promise((resolve) => setTimeout(resolve, 5_000));
   }
 }
+
+await telegram("deleteWebhook", { drop_pending_updates: false }).catch((error) => {
+  console.error("telegram webhook cleanup failed", error.message);
+});
 
 console.log("feesys telegram bot polling");
 while (true) {

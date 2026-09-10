@@ -123,10 +123,22 @@ For prelaunch testing only, the server can use an allowlist instead of a token c
 FEESYS_HOLDER_ALLOWLIST=0xWallet:25000,0xOtherWallet:1500
 ```
 
+If no token contract or allowlist is configured, prelaunch demo mode is on by default so an empty-wallet visitor can try the gated UI. Set this to close the demo gate:
+
+```text
+FEESYS_DEMO_MODE=0
+```
+
 Telegram bot file:
 
 ```text
 server/telegram-bot.mjs
+```
+
+Telegram service:
+
+```text
+feesys-telegram.service
 ```
 
 Telegram private env values:

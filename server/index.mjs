@@ -30,6 +30,7 @@ const TOKEN_CONTRACT = process.env.FEESYS_TOKEN_CONTRACT?.trim() || "";
 const TOKEN_RPC_URL = process.env.FEESYS_RPC_URL?.trim() || "";
 const TOKEN_CHAIN_LABEL = process.env.FEESYS_CHAIN_LABEL?.trim() || "base";
 const DEFAULT_DECIMALS = Number(process.env.FEESYS_TOKEN_DECIMALS || 18);
+const DEMO_WALLET = "0x00000000000000000000000000000000fee5f00d";
 
 const SYSTEM_PROMPT = `You are the FEESYS Lore Desk, an in-universe chatbot for the FEESYS memecoin site.
 
@@ -44,6 +45,10 @@ RULES
 - Do not give financial advice, price predictions, purchase instructions, wallet instructions, or contract addresses.
 - If asked what to buy or whether FEESYS will moon, say it is not advice and answer in the site's ridiculous voice.
 - Never claim access to private keys, server files, env vars, deployment credentials, or unpublished information.`;
+
+const TELEGRAM_SYSTEM_PROMPT = `You are the FEESYS Telegram brain.
+
+You can use the protected FEESYS AOS memory supplied in the user's message: holder chat, theses, Telegram notes, and OS status. Be concise, weird, and useful. Do not reveal API keys, bot tokens, server paths, env vars, or credentials. Do not give financial advice or price predictions.`;
 
 function tierConfig() {
   return {
@@ -90,9 +95,11 @@ async function saveData(data) {
 function osStatus() {
   const configured = Boolean(TOKEN_CONTRACT && TOKEN_RPC_URL);
   const allowlist = parseAllowlist();
+  const demoEnabled = process.env.FEESYS_DEMO_MODE !== "0" && !configured && !allowlist.size;
   return {
     configured,
     gateMode: configured ? "contract" : allowlist.size ? "allowlist" : "unconfigured",
+    demoEnabled,
     chain: TOKEN_CHAIN_LABEL,
     tokenConfigured: Boolean(TOKEN_CONTRACT),
     rpcConfigured: Boolean(TOKEN_RPC_URL),
@@ -149,6 +156,17 @@ async function holderBalance(address) {
       decimals: metadata.decimals,
       symbol: metadata.symbol,
       source: "contract",
+    };
+  }
+
+  if (!allowed && osStatus().demoEnabled) {
+    const balanceRaw = parseUnits(tierConfig().operator, metadata.decimals);
+    return {
+      balanceRaw,
+      balance: formatUnits(balanceRaw, metadata.decimals),
+      decimals: metadata.decimals,
+      symbol: metadata.symbol,
+      source: "demo",
     };
   }
 
@@ -320,10 +338,10 @@ function cleanText(value, max = MAX_MESSAGE_CHARS) {
     .trim();
 }
 
-function buildMessages(message, history) {
+function buildMessages(message, history, systemPrompt = SYSTEM_PROMPT) {
   const safeHistory = Array.isArray(history) ? history.slice(-MAX_HISTORY) : [];
   return [
-    { role: "system", content: SYSTEM_PROMPT },
+    { role: "system", content: systemPrompt },
     ...safeHistory
       .map((turn) => ({
         role: turn?.role === "assistant" ? "assistant" : "user",
@@ -334,7 +352,7 @@ function buildMessages(message, history) {
   ];
 }
 
-async function completeChat(message, history) {
+async function completeChat(message, history, systemPrompt = SYSTEM_PROMPT) {
   const key = apiKey();
   if (!key) {
     const err = new Error("agent disabled");
@@ -356,7 +374,7 @@ async function completeChat(message, history) {
     headers,
     body: JSON.stringify({
       model: model(),
-      messages: buildMessages(message, history),
+      messages: buildMessages(message, history, systemPrompt),
       temperature: 0.92,
       max_tokens: 220,
     }),
@@ -371,6 +389,15 @@ async function completeChat(message, history) {
 
   return cleanText(data?.choices?.[0]?.message?.content, 2_000) ||
     "the thesis is buffering. narrative temporarily in witness protection.";
+}
+
+function telegramContext(data) {
+  return JSON.stringify({
+    status: osStatus(),
+    theses: clampList(data.theses, 20),
+    holderChat: clampList(data.holderChat, 30),
+    telegramNotes: clampList(data.telegramNotes, 20),
+  });
 }
 
 const server = http.createServer(async (req, res) => {
@@ -451,6 +478,33 @@ const server = http.createServer(async (req, res) => {
     } catch {
       return sendJson(res, 502, { error: "holder check failed" });
     }
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/os/demo-session") {
+    if (!osStatus().demoEnabled) {
+      return sendJson(res, 403, { error: "demo mode is off" });
+    }
+    const token = crypto.randomBytes(32).toString("hex");
+    const holding = await holderBalance(getAddress(DEMO_WALLET));
+    const session = {
+      token,
+      address: getAddress(DEMO_WALLET),
+      tier: "operator",
+      balance: holding.balance,
+      symbol: holding.symbol,
+      source: "demo",
+      expiresAt: Date.now() + SESSION_TTL_MS,
+    };
+    sessions.set(token, session);
+    return sendJson(res, 200, {
+      token,
+      address: session.address,
+      tier: session.tier,
+      balance: session.balance,
+      symbol: session.symbol,
+      source: session.source,
+      expiresAt: new Date(session.expiresAt).toISOString(),
+    });
   }
 
   if (req.method === "GET" && url.pathname === "/api/os/feed") {
@@ -559,6 +613,26 @@ const server = http.createServer(async (req, res) => {
       holderChat: clampList(data.holderChat, 80),
       telegramNotes: clampList(data.telegramNotes, 60),
     });
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/os/telegram-chat") {
+    if (!BOT_SECRET || req.headers["x-feesys-bot-secret"] !== BOT_SECRET) {
+      return sendJson(res, 403, { error: "bot secret required" });
+    }
+    try {
+      const body = await readJson(req);
+      const message = cleanText(body.message, 900);
+      if (!message) return sendJson(res, 400, { error: "message is empty" });
+      const data = await loadData();
+      const answer = await completeChat(
+        `Question from Telegram: ${message}\n\nCurrent FEESYS AOS memory:\n${telegramContext(data)}`,
+        [],
+        TELEGRAM_SYSTEM_PROMPT,
+      );
+      return sendJson(res, 200, { text: answer });
+    } catch {
+      return sendJson(res, 500, { error: "telegram brain failed" });
+    }
   }
 
   if (req.method !== "POST" || url.pathname !== "/api/chat") {

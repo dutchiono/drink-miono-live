@@ -86,6 +86,56 @@ Chatbot health check:
 https://feesys.lol/api/chat/health
 ```
 
+## FEESYS AOS
+
+The site now has a holder-gated operating-system area:
+
+```text
+https://feesys.lol/api/os/status
+https://feesys.lol/api/os/feed
+```
+
+It supports:
+
+```text
+wallet signature login
+ERC-20 holder balance checks
+low-tier holder reading
+higher-tier thesis posting
+holder-only chat
+Telegram notes shared into the holder feed
+```
+
+The gate stays locked until the private server env has the real token details:
+
+```text
+FEESYS_TOKEN_CONTRACT=0x...
+FEESYS_RPC_URL=https://...
+FEESYS_CHAIN_LABEL=base
+FEESYS_READ_MIN=1000
+FEESYS_POST_MIN=10000
+FEESYS_OPERATOR_MIN=100000
+```
+
+For prelaunch testing only, the server can use an allowlist instead of a token contract:
+
+```text
+FEESYS_HOLDER_ALLOWLIST=0xWallet:25000,0xOtherWallet:1500
+```
+
+Telegram bot file:
+
+```text
+server/telegram-bot.mjs
+```
+
+Telegram private env values:
+
+```text
+FEESYS_TELEGRAM_BOT_TOKEN=...
+FEESYS_BOT_SHARED_SECRET=...
+```
+
 Temporary old URL:
 
 ```text

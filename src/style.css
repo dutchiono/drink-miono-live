@@ -759,7 +759,10 @@ h1 {
 }
 
 .treasury-lead,
-.fee-console,
+.treasury-ledger,
+.config-panel,
+.asset-card,
+.config-item,
 .agent-card,
 .rails-panel {
   border: 5px solid #130011;
@@ -794,8 +797,10 @@ h1 {
 .agent-card p,
 .rails-panel li,
 .rails-panel p,
-.fee-console label,
-.fee-input-row span {
+.ledger-head,
+.asset-card p,
+.asset-card em,
+.config-item span {
   margin: 0;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -822,7 +827,8 @@ h1 {
   text-transform: uppercase;
 }
 
-.fee-console {
+.treasury-ledger,
+.config-panel {
   display: grid;
   gap: 1rem;
   padding: clamp(1rem, 2.2vw, 1.4rem);
@@ -833,24 +839,95 @@ h1 {
     16px 16px 0 #00f5ff;
 }
 
-.fee-input-row {
+.ledger-head {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem;
+  justify-content: space-between;
+  gap: 0.7rem;
   align-items: center;
+  text-transform: uppercase;
 }
 
-.fee-input-row input {
-  width: min(100%, 18rem);
-  min-height: 3rem;
-  padding: 0 0.8rem;
+.ledger-head span {
+  padding: 0.35rem 0.55rem;
   border: 4px solid #fff;
   border-radius: 8px;
   background: #fffb00;
   color: #130011;
-  font: inherit;
-  font-size: clamp(1.2rem, 3vw, 2rem);
   font-weight: 950;
+}
+
+.asset-list,
+.config-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.asset-card,
+.config-item {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.75rem;
+  background: #fff;
+  box-shadow: 4px 4px 0 #00f5ff;
+}
+
+.asset-card span,
+.config-item span {
+  justify-self: start;
+  padding: 0.3rem 0.45rem;
+  border: 3px solid #130011;
+  border-radius: 8px;
+  background: #fffb00;
+  color: #130011;
+  font-size: 0.75rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.asset-card strong,
+.config-item strong {
+  overflow-wrap: anywhere;
+  font-size: clamp(1.2rem, 2.8vw, 2rem);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.asset-card p {
+  overflow-wrap: anywhere;
+  color: #4b003f;
+}
+
+.asset-card em {
+  color: #130011;
+  font-style: normal;
+}
+
+.config-panel {
+  grid-column: 1 / -1;
+}
+
+.config-panel h3 {
+  margin: 0;
+  color: #fffb00;
+  font-size: clamp(1.9rem, 4vw, 3.5rem);
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+
+.config-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.config-item {
+  min-height: 7rem;
+  background: #ff00c2;
+  color: #fff;
+}
+
+.config-item.ready {
+  background: #00ff66;
+  color: #130011;
 }
 
 .allocation-bars {
@@ -1279,6 +1356,7 @@ h1 {
   }
 
   .agent-board,
+  .config-grid,
   .rails-panel ul {
     grid-template-columns: 1fr;
   }

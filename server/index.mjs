@@ -31,6 +31,8 @@ const TOKEN_RPC_URL = process.env.FEESYS_RPC_URL?.trim() || "";
 const TOKEN_CHAIN_LABEL = process.env.FEESYS_CHAIN_LABEL?.trim() || "base";
 const DEFAULT_DECIMALS = Number(process.env.FEESYS_TOKEN_DECIMALS || 18);
 const DEMO_WALLET = "0x00000000000000000000000000000000fee5f00d";
+const TREASURY_WALLET = process.env.FEESYS_TREASURY_WALLET?.trim() || "";
+const TREASURY_FEE_TOKEN = process.env.FEESYS_TREASURY_FEE_TOKEN_CONTRACT?.trim() || "";
 
 const SYSTEM_PROMPT = `You are the FEESYS Lore Desk, an in-universe chatbot for the FEESYS memecoin site.
 
@@ -51,40 +53,117 @@ const TELEGRAM_SYSTEM_PROMPT = `You are the FEESYS Telegram brain.
 
 You can use the protected FEESYS AOS memory supplied in the user's message: holder chat, theses, Telegram notes, OS status, and treasury status. Be concise, weird, and useful. Do not reveal API keys, bot tokens, server paths, env vars, or credentials. Do not give financial advice, price predictions, or payout promises.`;
 
-function treasuryStatus() {
-  const wallet = process.env.FEESYS_TREASURY_WALLET?.trim() || "";
-  const executionMode = process.env.FEESYS_TREASURY_EXECUTION_MODE?.trim() || "proposal-only";
+function percentEnv(name, fallback) {
+  const value = Number(process.env[name] || fallback);
+  return Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+
+function shortMaybeAddress(address) {
+  return isAddress(address) ? `${address.slice(0, 6)}...${address.slice(-4)}` : "not set";
+}
+
+function allocationPolicy() {
+  return [
+    {
+      label: "tokenized RWA basket",
+      percent: percentEnv("FEESYS_TREASURY_RWA_TARGET", 50),
+      role: "stock-like onchain exposure list; only configured contract addresses count",
+    },
+    {
+      label: "buyback / liquidity",
+      percent: percentEnv("FEESYS_TREASURY_LIQUIDITY_TARGET", 25),
+      role: "market support route; not a holder payout promise",
+    },
+    {
+      label: "operating reserve",
+      percent: percentEnv("FEESYS_TREASURY_RESERVE_TARGET", 15),
+      role: "server, tooling, legal, and launch budget",
+    },
+    {
+      label: "agent budget",
+      percent: percentEnv("FEESYS_TREASURY_AGENT_TARGET", 10),
+      role: "automation, monitoring, proof posts, and Telegram operations",
+    },
+  ];
+}
+
+function parseTreasuryAssets() {
+  const raw = process.env.FEESYS_TREASURY_RWA_ASSETS || "";
+  return raw.split(",")
+    .map((item) => {
+      const [label, address, target] = item.split(":").map((part) => part?.trim());
+      if (!label || !isAddress(address)) return null;
+      return {
+        label,
+        address: getAddress(address),
+        targetPercent: Number.isFinite(Number(target)) ? Number(target) : null,
+      };
+    })
+    .filter(Boolean);
+}
+
+async function erc20Snapshot(client, contractAddress, holderAddress, fallbackLabel = "asset") {
+  if (!client || !isAddress(contractAddress) || !isAddress(holderAddress)) {
+    return {
+      label: fallbackLabel,
+      configured: false,
+      address: isAddress(contractAddress) ? getAddress(contractAddress) : "not set",
+      balance: null,
+      symbol: null,
+    };
+  }
+  const address = getAddress(contractAddress);
+  const holder = getAddress(holderAddress);
+  const [decimals, symbol, balanceRaw] = await Promise.all([
+    client.readContract({ address, abi: erc20Abi, functionName: "decimals" }).catch(() => DEFAULT_DECIMALS),
+    client.readContract({ address, abi: erc20Abi, functionName: "symbol" }).catch(() => fallbackLabel),
+    client.readContract({ address, abi: erc20Abi, functionName: "balanceOf", args: [holder] }).catch(() => null),
+  ]);
   return {
-    mode: wallet ? executionMode : "proposal-only",
-    treasuryWallet: wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : "pending",
-    split: [
-      {
-        label: "tokenized RWA basket",
-        percent: 50,
-        role: "stock-like exposure research queue; executed only through approved rails",
-      },
-      {
-        label: "buyback / liquidity",
-        percent: 25,
-        role: "route value into market support instead of promising holder payouts",
-      },
-      {
-        label: "operating reserve",
-        percent: 15,
-        role: "keep the machine funded when the chart starts doing theater",
-      },
-      {
-        label: "agent budget",
-        percent: 10,
-        role: "pay the watchers, proof posts, Telegram brain, and weird experiments",
-      },
-    ],
+    label: fallbackLabel,
+    configured: true,
+    address,
+    balance: balanceRaw === null ? null : formatUnits(balanceRaw, Number(decimals)),
+    symbol: String(symbol || fallbackLabel),
+  };
+}
+
+async function treasuryStatus() {
+  const wallet = isAddress(TREASURY_WALLET) ? getAddress(TREASURY_WALLET) : "";
+  const holderToken = isAddress(TOKEN_CONTRACT) ? getAddress(TOKEN_CONTRACT) : "";
+  const feeToken = isAddress(TREASURY_FEE_TOKEN) ? getAddress(TREASURY_FEE_TOKEN) : "";
+  const executionMode = process.env.FEESYS_TREASURY_EXECUTION_MODE?.trim() || "proposal-only";
+  const client = publicClient();
+  const assets = parseTreasuryAssets();
+  const missing = [
+    TOKEN_RPC_URL ? null : "FEESYS_RPC_URL",
+    holderToken ? null : "FEESYS_TOKEN_CONTRACT",
+    wallet ? null : "FEESYS_TREASURY_WALLET",
+    feeToken ? null : "FEESYS_TREASURY_FEE_TOKEN_CONTRACT",
+    assets.length ? null : "FEESYS_TREASURY_RWA_ASSETS",
+  ].filter(Boolean);
+  const [feeAsset, ...rwaAssets] = await Promise.all([
+    erc20Snapshot(client, feeToken, wallet, "fee asset"),
+    ...assets.map((asset) => erc20Snapshot(client, asset.address, wallet, asset.label)
+      .then((snapshot) => ({ ...snapshot, targetPercent: asset.targetPercent }))),
+  ]);
+  return {
+    ready: missing.length === 0,
+    mode: missing.length ? "configuration-required" : executionMode,
+    chain: TOKEN_CHAIN_LABEL,
+    treasuryWallet: wallet || "not set",
+    treasuryWalletShort: shortMaybeAddress(wallet),
+    tokenContract: holderToken || "not set",
+    feeAsset,
+    rwaAssets,
+    missing,
+    split: allocationPolicy(),
     agents: [
-      { name: "fee watcher", status: "planned", job: "detect treasury inflows and create receipts" },
-      { name: "allocation brain", status: "planned", job: "propose the split and explain why it passed" },
-      { name: "risk officer", status: "planned", job: "block leverage, concentration, bad venues, and fake wrappers" },
-      { name: "execution clerk", status: "manual approval", job: "submit only approved treasury actions" },
-      { name: "proof printer", status: "planned", job: "publish receipts to the site and Telegram" },
+      { name: "fee watcher", status: wallet && feeToken ? "armed" : "needs config", job: "reads fee-token balance at the treasury wallet" },
+      { name: "allocation brain", status: "policy loaded", job: "compares balances against the posted allocation policy" },
+      { name: "risk officer", status: assets.length ? "asset list loaded" : "needs assets", job: "rejects leverage, unknown contracts, and overconcentration" },
+      { name: "execution clerk", status: executionMode, job: "requires approved treasury wallet execution" },
+      { name: "proof printer", status: missing.length ? "waiting" : "ready", job: "publishes balances, receipts, and treasury actions" },
     ],
     rails: [
       "no direct dividends or profit promises",
@@ -440,10 +519,10 @@ async function completeChat(message, history, systemPrompt = SYSTEM_PROMPT) {
     "the thesis is buffering. narrative temporarily in witness protection.";
 }
 
-function telegramContext(data) {
+async function telegramContext(data) {
   return JSON.stringify({
     status: osStatus(),
-    treasury: treasuryStatus(),
+    treasury: await treasuryStatus(),
     theses: clampList(data.theses, 20),
     holderChat: clampList(data.holderChat, 30),
     telegramNotes: clampList(data.telegramNotes, 20),
@@ -489,7 +568,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === "GET" && (url.pathname === "/api/treasury/status" || url.pathname === "/api/os/treasury/status")) {
-    return sendJson(res, 200, treasuryStatus());
+    return sendJson(res, 200, await treasuryStatus());
   }
 
   if (req.method === "POST" && url.pathname === "/api/os/challenge") {
@@ -692,7 +771,7 @@ const server = http.createServer(async (req, res) => {
       if (!message) return sendJson(res, 400, { error: "message is empty" });
       const data = await loadData();
       const answer = await completeChat(
-        `Question from Telegram: ${message}\n\nCurrent FEESYS AOS memory:\n${telegramContext(data)}`,
+        `Question from Telegram: ${message}\n\nCurrent FEESYS AOS memory:\n${await telegramContext(data)}`,
         [],
         TELEGRAM_SYSTEM_PROMPT,
       ).catch(() => summarizeOsMemory(data));

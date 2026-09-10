@@ -119,15 +119,22 @@ Treasury OS status:
 https://feesys.lol/api/os/treasury/status
 ```
 
-The treasury section is intentionally framed as proposal, receipts, buybacks,
-liquidity, holder access, and operating budget. Do not promise dividends,
-yield, stock profits, or direct payouts to holders in public copy.
+The treasury section reads real configuration from the private server env. It
+should show missing config rather than made-up balances. Keep public copy framed
+around receipts, buybacks, liquidity, holder access, and operating budget. Do
+not promise dividends, yield, stock profits, or direct payouts to holders.
 
 Optional treasury env values:
 
 ```text
 FEESYS_TREASURY_WALLET=0x...
 FEESYS_TREASURY_EXECUTION_MODE=proposal-only
+FEESYS_TREASURY_FEE_TOKEN_CONTRACT=0x...
+FEESYS_TREASURY_RWA_ASSETS=xSPY:0xContract:40,xNVDA:0xContract:30,xTSLA:0xContract:30
+FEESYS_TREASURY_RWA_TARGET=50
+FEESYS_TREASURY_LIQUIDITY_TARGET=25
+FEESYS_TREASURY_RESERVE_TARGET=15
+FEESYS_TREASURY_AGENT_TARGET=10
 ```
 
 The gate stays locked until the private server env has the real token details:

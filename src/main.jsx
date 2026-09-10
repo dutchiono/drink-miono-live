@@ -33,8 +33,27 @@ const starterQuestions = [
 ];
 
 const fallbackTreasury = {
-  mode: "proposal-only",
-  treasuryWallet: "pending",
+  ready: false,
+  mode: "configuration-required",
+  chain: "base",
+  treasuryWallet: "not set",
+  treasuryWalletShort: "not set",
+  tokenContract: "not set",
+  feeAsset: {
+    label: "fee asset",
+    configured: false,
+    address: "not set",
+    balance: null,
+    symbol: null,
+  },
+  rwaAssets: [],
+  missing: [
+    "FEESYS_RPC_URL",
+    "FEESYS_TOKEN_CONTRACT",
+    "FEESYS_TREASURY_WALLET",
+    "FEESYS_TREASURY_FEE_TOKEN_CONTRACT",
+    "FEESYS_TREASURY_RWA_ASSETS",
+  ],
   split: [
     {
       label: "tokenized RWA basket",
@@ -473,8 +492,6 @@ function HolderOS() {
 
 function TreasuryOS() {
   const [treasury, setTreasury] = React.useState(fallbackTreasury);
-  const [feeAmount, setFeeAmount] = React.useState("10000");
-  const numericFees = Math.max(0, Number(feeAmount) || 0);
 
   React.useEffect(() => {
     fetch("/api/os/treasury/status")
@@ -487,36 +504,71 @@ function TreasuryOS() {
     <section className="treasury-zone" id="treasury" aria-label="FEESYS treasury operating system">
       <div className="treasury-lead">
         <p className="panel-label">TREASURY OS</p>
-        <h2>fees enter the machine</h2>
+        <h2>connect the wallet</h2>
         <p>
-          Trading fees become transparent treasury actions. The allocation brain
-          can recommend stock-like onchain exposure, but the risk officer keeps
-          it inside posted rails and the proof printer makes receipts public.
+          This is wired for the real token, treasury wallet, fee asset, and
+          tokenized stock basket. If a contract is missing, the machine says so
+          instead of inventing numbers.
         </p>
         <div className="treasury-mode">
           <span>mode: {treasury.mode}</span>
-          <span>wallet: {treasury.treasuryWallet}</span>
+          <span>chain: {treasury.chain}</span>
+          <span>wallet: {treasury.treasuryWalletShort}</span>
         </div>
       </div>
 
-      <div className="fee-console">
-        <label htmlFor="fee-amount">sample fee intake</label>
-        <div className="fee-input-row">
-          <input
-            id="fee-amount"
-            value={feeAmount}
-            onChange={(event) => setFeeAmount(event.target.value)}
-            inputMode="decimal"
-            aria-label="Sample treasury fee amount"
-          />
-          <span>USDC-ish units</span>
+      <div className="treasury-ledger">
+        <div className="ledger-head">
+          <span>{treasury.ready ? "ready" : "needs config"}</span>
+          <strong>live treasury readout</strong>
+        </div>
+        <div className="asset-card primary-asset">
+          <span>fee asset</span>
+          <strong>{treasury.feeAsset?.symbol || "not connected"}</strong>
+          <p>{treasury.feeAsset?.configured ? treasury.feeAsset.address : "set FEESYS_TREASURY_FEE_TOKEN_CONTRACT"}</p>
+          <em>{treasury.feeAsset?.balance === null ? "balance unavailable" : Number(treasury.feeAsset.balance).toLocaleString()}</em>
+        </div>
+        <div className="asset-list">
+          {treasury.rwaAssets.length ? treasury.rwaAssets.map((asset) => (
+            <div className="asset-card" key={asset.address}>
+              <span>{asset.targetPercent === null ? "basket asset" : `${asset.targetPercent}% target`}</span>
+              <strong>{asset.symbol || asset.label}</strong>
+              <p>{asset.address}</p>
+              <em>{asset.balance === null ? "balance unavailable" : Number(asset.balance).toLocaleString()}</em>
+            </div>
+          )) : (
+            <div className="asset-card">
+              <span>basket empty</span>
+              <strong>RWA assets not configured</strong>
+              <p>set FEESYS_TREASURY_RWA_ASSETS with label:contract:target entries</p>
+              <em>no fake holdings displayed</em>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="config-panel">
+        <h3>production checklist</h3>
+        <div className="config-grid">
+          {[
+            ["RPC", !treasury.missing.includes("FEESYS_RPC_URL")],
+            ["holder token", treasury.tokenContract !== "not set"],
+            ["treasury wallet", treasury.treasuryWallet !== "not set"],
+            ["fee asset", treasury.feeAsset?.configured],
+            ["RWA basket", Boolean(treasury.rwaAssets.length)],
+          ].map(([label, ready]) => (
+            <div className={ready ? "config-item ready" : "config-item"} key={label}>
+              <span>{ready ? "connected" : "missing"}</span>
+              <strong>{label}</strong>
+            </div>
+          ))}
         </div>
         <div className="allocation-bars">
           {treasury.split.map((bucket) => (
             <div className="allocation-row" key={bucket.label}>
               <div className="allocation-copy">
                 <strong>{bucket.label}</strong>
-                <span>{bucket.percent}% / {(numericFees * bucket.percent / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                <span>{bucket.percent}% target</span>
               </div>
               <div className="allocation-track" aria-hidden="true">
                 <i style={{ "--fill": `${bucket.percent}%` }} />
@@ -585,10 +637,10 @@ function App() {
               ask thesis ai
             </a>
           </div>
-          <div className="stat-strip" aria-label="Important fake stats">
-            <span>100x pending</span>
-            <span>treasury brain loading</span>
-            <span>12 tabs of alpha</span>
+          <div className="stat-strip" aria-label="FEESYS system status">
+            <span>holder gate ready</span>
+            <span>treasury wallet required</span>
+            <span>receipts over promises</span>
           </div>
         </div>
         <div className="idol-wrap" aria-label="FEESYS trading shrine">

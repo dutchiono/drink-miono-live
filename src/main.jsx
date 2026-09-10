@@ -1,6 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import thesisMascot from "./assets/thesis-mascot.png";
+import feesysIdol from "./assets/feesys-idol.png";
 import "./style.css";
 
 const systemCards = [
@@ -467,9 +467,9 @@ function App() {
             <span>12 tabs of alpha</span>
           </div>
         </div>
-        <div className="mascot-wrap" aria-label="THESIS mascot">
-          <img src={thesisMascot} alt="Cartoon mascot holding a THESIS sign" />
-          <div className="speech">fee.sys</div>
+        <div className="idol-wrap" aria-label="FEESYS trading shrine">
+          <img src={feesysIdol} alt="Neon FEESYS token shrine with trading screens" />
+          <div className="artifact-badge">AOS ONLINE</div>
         </div>
       </section>
 

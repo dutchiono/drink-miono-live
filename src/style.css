@@ -244,32 +244,34 @@ h1 {
   outline-offset: 4px;
 }
 
-.mascot-wrap {
+.idol-wrap {
   position: relative;
   display: grid;
   place-items: center;
   transform: rotate(3deg);
 }
 
-.mascot-wrap img {
+.idol-wrap img {
   width: min(100%, 36rem);
+  border: 5px solid #130011;
+  border-radius: 8px;
   filter: drop-shadow(14px 14px 0 #130011);
   animation: mascot-bounce 1.35s ease-in-out infinite alternate;
 }
 
-.speech {
+.artifact-badge {
   position: absolute;
   right: 0;
   bottom: 8%;
   padding: 0.65rem 1rem;
   border: 5px solid #130011;
   border-radius: 8px;
-  background: #fff;
-  box-shadow: 8px 8px 0 #00f5ff;
+  background: #fff200;
+  box-shadow: 8px 8px 0 #ff00c2;
   color: #130011;
-  font-size: clamp(1.4rem, 4vw, 3rem);
+  font-size: clamp(1rem, 2vw, 1.5rem);
   font-weight: 950;
-  transform: rotate(-7deg);
+  transform: rotate(-4deg);
 }
 
 .chaos-grid {
@@ -1010,17 +1012,17 @@ h1 {
       9px 9px 0 #00f5ff;
   }
 
-  .mascot-wrap {
+  .idol-wrap {
     order: -1;
   }
 
-  .mascot-wrap img {
+  .idol-wrap img {
     width: min(100%, 24rem);
   }
 
-  .speech {
+  .artifact-badge {
     right: 0.75rem;
-    box-shadow: 5px 5px 0 #00f5ff;
+    box-shadow: 5px 5px 0 #ff00c2;
   }
 
   .chaos-grid {

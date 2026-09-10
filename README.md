@@ -18,10 +18,17 @@ Most styling lives here:
 src/style.css
 ```
 
-The mascot image lives here:
+The hero image lives here:
 
 ```text
-src/assets/thesis-mascot.png
+src/assets/feesys-idol.png
+```
+
+The 3:1 banners live here:
+
+```text
+public/banners/x-banner.png
+public/banners/dexscreener-banner.png
 ```
 
 The chatbot page code also lives in `src/main.jsx`. Its private server endpoint lives here:

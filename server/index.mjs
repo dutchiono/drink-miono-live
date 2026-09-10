@@ -400,6 +400,19 @@ function telegramContext(data) {
   });
 }
 
+function summarizeOsMemory(data) {
+  const thesis = clampList(data.theses, 1)[0];
+  const chat = clampList(data.holderChat, 1)[0];
+  const note = clampList(data.telegramNotes, 1)[0];
+  return [
+    `FEESYS AOS is in ${osStatus().gateMode} mode.`,
+    `Thesissis stored: ${data.theses.length}. Holder chat lines: ${data.holderChat.length}. Telegram notes: ${data.telegramNotes.length}.`,
+    thesis ? `Latest thesis: ${thesis.title}` : null,
+    chat ? `Latest holder line: ${chat.text}` : null,
+    note ? `Latest Telegram note: ${note.text}` : null,
+  ].filter(Boolean).join(" ");
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || "/", "http://127.0.0.1");
 
@@ -628,8 +641,10 @@ const server = http.createServer(async (req, res) => {
         `Question from Telegram: ${message}\n\nCurrent FEESYS AOS memory:\n${telegramContext(data)}`,
         [],
         TELEGRAM_SYSTEM_PROMPT,
-      );
-      return sendJson(res, 200, { text: answer });
+      ).catch(() => summarizeOsMemory(data));
+      return sendJson(res, 200, {
+        text: answer.includes("thesis is buffering") ? summarizeOsMemory(data) : answer,
+      });
     } catch {
       return sendJson(res, 500, { error: "telegram brain failed" });
     }

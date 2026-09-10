@@ -1,6 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import feesysArtifact from "./assets/feesys-artifact.png";
+import feesysIdol from "./assets/feesys-idol-refined.png";
 import "./style.css";
 
 const systemCards = [
@@ -643,7 +643,7 @@ function App() {
           </div>
         </div>
         <div className="idol-wrap" aria-label="FEESYS trading shrine">
-          <img src={feesysArtifact} alt="Black-and-gold FEESYS treasury artifact with trading terminals" />
+          <img src={feesysIdol} alt="Crowned FEESYS mascot in a neon trading shrine" />
           <div className="artifact-badge">AOS ONLINE</div>
         </div>
       </section>

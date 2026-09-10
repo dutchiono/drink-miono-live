@@ -116,7 +116,7 @@ Telegram notes shared into the holder feed
 Treasury OS status:
 
 ```text
-https://feesys.lol/api/treasury/status
+https://feesys.lol/api/os/treasury/status
 ```
 
 The treasury section is intentionally framed as proposal, receipts, buybacks,

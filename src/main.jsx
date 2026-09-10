@@ -477,7 +477,7 @@ function TreasuryOS() {
   const numericFees = Math.max(0, Number(feeAmount) || 0);
 
   React.useEffect(() => {
-    fetch("/api/treasury/status")
+    fetch("/api/os/treasury/status")
       .then((res) => res.json())
       .then((data) => setTreasury({ ...fallbackTreasury, ...data }))
       .catch(() => setTreasury(fallbackTreasury));

@@ -488,7 +488,7 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
-  if (req.method === "GET" && url.pathname === "/api/treasury/status") {
+  if (req.method === "GET" && (url.pathname === "/api/treasury/status" || url.pathname === "/api/os/treasury/status")) {
     return sendJson(res, 200, treasuryStatus());
   }
 

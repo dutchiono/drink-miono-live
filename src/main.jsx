@@ -1,6 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import thesisMascot from "./assets/thesis-mascot-refined.png";
+import thesisMascot from "./assets/thesis-mascot-toned.png";
 import "./style.css";
 
 const systemCards = [

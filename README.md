@@ -21,7 +21,7 @@ src/style.css
 The hero image lives here:
 
 ```text
-src/assets/feesys-idol.png
+src/assets/thesis-mascot-toned.png
 ```
 
 The 3:1 banners live here:
@@ -119,6 +119,17 @@ Treasury OS status:
 https://feesys.lol/api/os/treasury/status
 ```
 
+Prediction Market OS status:
+
+```text
+https://feesys.lol/api/os/prediction/status
+```
+
+The prediction desk pulls a real public market feed and lets an operator-tier
+holder queue treasury proposals. It does not place trades, show fake fills, or
+claim execution until the real treasury wallet, token, and venue execution rails
+are configured.
+
 The treasury section reads real configuration from the private server env. It
 should show missing config rather than made-up balances. Keep public copy framed
 around receipts, buybacks, liquidity, holder access, and operating budget. Do
@@ -135,6 +146,14 @@ FEESYS_TREASURY_RWA_TARGET=50
 FEESYS_TREASURY_LIQUIDITY_TARGET=25
 FEESYS_TREASURY_RESERVE_TARGET=15
 FEESYS_TREASURY_AGENT_TARGET=10
+```
+
+Optional prediction-market env values:
+
+```text
+FEESYS_PREDICTION_MARKETS_URL=https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=12&order=volume24hr&ascending=false
+FEESYS_PREDICTION_EXECUTION_MODE=proposal-only
+FEESYS_PREDICTION_MAX_BPS=250
 ```
 
 The gate stays locked until the private server env has the real token details:

@@ -33,6 +33,10 @@ const DEFAULT_DECIMALS = Number(process.env.FEESYS_TOKEN_DECIMALS || 18);
 const DEMO_WALLET = "0x00000000000000000000000000000000fee5f00d";
 const TREASURY_WALLET = process.env.FEESYS_TREASURY_WALLET?.trim() || "";
 const TREASURY_FEE_TOKEN = process.env.FEESYS_TREASURY_FEE_TOKEN_CONTRACT?.trim() || "";
+const PREDICTION_MARKETS_URL = process.env.FEESYS_PREDICTION_MARKETS_URL?.trim() ||
+  "https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=12&order=volume24hr&ascending=false";
+const PREDICTION_EXECUTION_MODE = process.env.FEESYS_PREDICTION_EXECUTION_MODE?.trim() || "proposal-only";
+const PREDICTION_MAX_BPS = Math.max(1, Math.min(10_000, Number(process.env.FEESYS_PREDICTION_MAX_BPS || 250)));
 
 const SYSTEM_PROMPT = `You are the FEESYS Lore Desk, an in-universe chatbot for the FEESYS memecoin site.
 
@@ -100,6 +104,108 @@ function parseTreasuryAssets() {
       };
     })
     .filter(Boolean);
+}
+
+function parseMaybeJson(value, fallback = []) {
+  try {
+    const parsed = JSON.parse(String(value || ""));
+    return Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function numberOrNull(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function normalizePredictionMarket(market) {
+  const outcomes = parseMaybeJson(market.outcomes, ["Yes", "No"])
+    .map((outcome) => cleanText(outcome, 60))
+    .filter(Boolean);
+  const prices = parseMaybeJson(market.outcomePrices, [])
+    .map(numberOrNull);
+  const clobTokenIds = parseMaybeJson(market.clobTokenIds, []);
+  const yesPrice = prices[0] ?? numberOrNull(market.bestAsk) ?? numberOrNull(market.lastTradePrice);
+  const noPrice = prices[1] ?? (yesPrice === null ? null : 1 - yesPrice);
+
+  return {
+    id: cleanText(market.id, 60) || cleanText(market.conditionId, 80),
+    venue: "polymarket",
+    question: cleanText(market.question, 180),
+    slug: cleanText(market.slug, 140),
+    endDate: market.endDate || market.endDateIso || null,
+    image: typeof market.image === "string" ? market.image : "",
+    active: Boolean(market.active),
+    acceptingOrders: Boolean(market.acceptingOrders),
+    conditionId: cleanText(market.conditionId, 100),
+    outcomes: outcomes.length ? outcomes : ["Yes", "No"],
+    prices: [yesPrice, noPrice].filter((price) => price !== null),
+    volume24hr: numberOrNull(market.volume24hr),
+    liquidity: numberOrNull(market.liquidityNum ?? market.liquidity),
+    spread: numberOrNull(market.spread),
+    orderMinSize: numberOrNull(market.orderMinSize),
+    clobTokenIds: clobTokenIds.map((token) => cleanText(token, 100)).filter(Boolean),
+    sourceUrl: market.slug ? `https://polymarket.com/event/${market.slug}` : "https://polymarket.com",
+  };
+}
+
+async function predictionMarkets() {
+  const response = await fetch(PREDICTION_MARKETS_URL, {
+    headers: { accept: "application/json" },
+    signal: AbortSignal.timeout(6_000),
+  });
+  if (!response.ok) throw new Error(`market feed ${response.status}`);
+  const data = await response.json();
+  return (Array.isArray(data) ? data : [])
+    .map(normalizePredictionMarket)
+    .filter((market) => market.id && market.question)
+    .slice(0, 12);
+}
+
+async function predictionStatus(data = null) {
+  let markets = [];
+  let feedError = "";
+  try {
+    markets = await predictionMarkets();
+  } catch (error) {
+    feedError = error.message || "market feed unavailable";
+  }
+
+  const stored = data || await loadData();
+  const treasuryReady = Boolean(isAddress(TREASURY_WALLET) && isAddress(TREASURY_FEE_TOKEN));
+  const missing = [
+    markets.length ? null : "live market feed",
+    TOKEN_CONTRACT ? null : "FEESYS_TOKEN_CONTRACT",
+    TREASURY_WALLET ? null : "FEESYS_TREASURY_WALLET",
+    TREASURY_FEE_TOKEN ? null : "FEESYS_TREASURY_FEE_TOKEN_CONTRACT",
+    PREDICTION_EXECUTION_MODE === "proposal-only" ? "execution venue credentials" : null,
+  ].filter(Boolean);
+
+  return {
+    ready: markets.length > 0 && treasuryReady && PREDICTION_EXECUTION_MODE !== "proposal-only",
+    mode: PREDICTION_EXECUTION_MODE,
+    feed: {
+      venue: "polymarket",
+      source: PREDICTION_MARKETS_URL,
+      ok: markets.length > 0,
+      error: feedError,
+      updatedAt: new Date().toISOString(),
+    },
+    maxPositionBps: PREDICTION_MAX_BPS,
+    missing,
+    rails: [
+      "live market feed required",
+      "operator holder tier required to queue action",
+      "single proposal capped by posted basis points",
+      "no market order execution",
+      "manual treasury approval before any venue order",
+      "receipt required after execution",
+    ],
+    markets,
+    proposals: clampList(stored.marketProposals || [], 40).reverse(),
+  };
 }
 
 async function erc20Snapshot(client, contractAddress, holderAddress, fallbackLabel = "asset") {
@@ -190,6 +296,7 @@ function defaultData() {
   return {
     version: 1,
     holderChat: [],
+    marketProposals: [],
     theses: [
       {
         id: "genesis-thesis",
@@ -523,6 +630,7 @@ async function telegramContext(data) {
   return JSON.stringify({
     status: osStatus(),
     treasury: await treasuryStatus(),
+    prediction: await predictionStatus(data),
     theses: clampList(data.theses, 20),
     holderChat: clampList(data.holderChat, 30),
     telegramNotes: clampList(data.telegramNotes, 20),
@@ -569,6 +677,11 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "GET" && (url.pathname === "/api/treasury/status" || url.pathname === "/api/os/treasury/status")) {
     return sendJson(res, 200, await treasuryStatus());
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/os/prediction/status") {
+    const data = await loadData();
+    return sendJson(res, 200, await predictionStatus(data));
   }
 
   if (req.method === "POST" && url.pathname === "/api/os/challenge") {
@@ -780,6 +893,57 @@ const server = http.createServer(async (req, res) => {
       });
     } catch {
       return sendJson(res, 500, { error: "telegram brain failed" });
+    }
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/os/prediction/proposals") {
+    const session = currentSession(req);
+    if (!hasTier(session, "operator")) {
+      return sendJson(res, 403, { error: "operator tier required" });
+    }
+    try {
+      const body = await readJson(req);
+      const marketId = cleanText(body.marketId, 80);
+      const venue = cleanText(body.venue, 40) || "polymarket";
+      const question = cleanText(body.question, 180);
+      const outcome = cleanText(body.outcome, 80);
+      const side = body.side === "no" ? "no" : "yes";
+      const maxSpend = Number(body.maxSpend);
+      const maxPrice = Number(body.maxPrice);
+      const thesis = cleanText(body.thesis, 700);
+      if (!marketId || !question || !outcome) {
+        return sendJson(res, 400, { error: "market selection is incomplete" });
+      }
+      if (!Number.isFinite(maxSpend) || maxSpend <= 0) {
+        return sendJson(res, 400, { error: "max spend must be positive" });
+      }
+      if (!Number.isFinite(maxPrice) || maxPrice <= 0 || maxPrice >= 1) {
+        return sendJson(res, 400, { error: "limit price must be between 0 and 1" });
+      }
+      if (!thesis) return sendJson(res, 400, { error: "proposal thesis is required" });
+
+      const data = await loadData();
+      const proposal = {
+        id: newId("market"),
+        status: "queued",
+        mode: PREDICTION_EXECUTION_MODE,
+        venue,
+        marketId,
+        question,
+        outcome,
+        side,
+        maxSpend: maxSpend.toFixed(2),
+        maxPrice: maxPrice.toFixed(4),
+        maxPositionBps: PREDICTION_MAX_BPS,
+        thesis,
+        author: `${session.address.slice(0, 6)}...${session.address.slice(-4)}`,
+        createdAt: new Date().toISOString(),
+      };
+      data.marketProposals = clampList([...(data.marketProposals || []), proposal], 200);
+      await saveData(data);
+      return sendJson(res, 201, { proposal });
+    } catch {
+      return sendJson(res, 500, { error: "could not queue market proposal" });
     }
   }
 

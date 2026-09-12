@@ -95,6 +95,26 @@ const fallbackTreasury = {
     "Treasury upside is routed through public buybacks, liquidity, holder access, and operating budget. The site does not promise distributions.",
 };
 
+const fallbackPrediction = {
+  ready: false,
+  mode: "proposal-only",
+  feed: {
+    venue: "polymarket",
+    ok: false,
+    updatedAt: null,
+    error: "",
+  },
+  maxPositionBps: 250,
+  missing: ["live market feed", "execution venue credentials"],
+  rails: [
+    "live market feed required",
+    "operator holder tier required to queue action",
+    "manual treasury approval before any venue order",
+  ],
+  markets: [],
+  proposals: [],
+};
+
 const initialChat = [
   {
     role: "assistant",
@@ -105,6 +125,21 @@ const initialChat = [
 
 function shortAddress(address) {
   return address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "";
+}
+
+function money(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "n/a";
+  return number >= 1_000_000
+    ? `$${(number / 1_000_000).toFixed(1)}M`
+    : number >= 1_000
+      ? `$${(number / 1_000).toFixed(1)}K`
+      : `$${number.toFixed(0)}`;
+}
+
+function probability(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? `${Math.round(number * 100)}%` : "n/a";
 }
 
 function LoreChat() {
@@ -602,17 +637,218 @@ function TreasuryOS() {
   );
 }
 
+function PredictionOS() {
+  const [prediction, setPrediction] = React.useState(fallbackPrediction);
+  const [selectedId, setSelectedId] = React.useState("");
+  const [outcomeIndex, setOutcomeIndex] = React.useState(0);
+  const [side, setSide] = React.useState("yes");
+  const [maxSpend, setMaxSpend] = React.useState("50");
+  const [maxPrice, setMaxPrice] = React.useState("0.50");
+  const [thesis, setThesis] = React.useState("");
+  const [message, setMessage] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+
+  const loadPrediction = React.useCallback(async () => {
+    const res = await fetch("/api/os/prediction/status");
+    const data = await res.json();
+    setPrediction({ ...fallbackPrediction, ...data });
+    setSelectedId((current) => current || data.markets?.[0]?.id || "");
+  }, []);
+
+  React.useEffect(() => {
+    loadPrediction().catch(() => {
+      setPrediction(fallbackPrediction);
+      setMessage("market desk could not reach the feed");
+    });
+  }, [loadPrediction]);
+
+  const selectedMarket = prediction.markets.find((market) => market.id === selectedId) || prediction.markets[0];
+  const selectedOutcome = selectedMarket?.outcomes?.[outcomeIndex] || selectedMarket?.outcomes?.[0] || "";
+
+  React.useEffect(() => {
+    if (!selectedMarket) return;
+    const nextPrice = selectedMarket.prices?.[outcomeIndex] ?? selectedMarket.prices?.[0] ?? 0.5;
+    setMaxPrice(String(Math.max(0.01, Math.min(0.99, Number(nextPrice) || 0.5)).toFixed(2)));
+  }, [selectedMarket, outcomeIndex]);
+
+  const queueProposal = async (event) => {
+    event.preventDefault();
+    if (!selectedMarket) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const token = localStorage.getItem("feesysSession") || "";
+      const res = await fetch("/api/os/prediction/proposals", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          marketId: selectedMarket.id,
+          venue: selectedMarket.venue,
+          question: selectedMarket.question,
+          outcome: selectedOutcome,
+          side,
+          maxSpend,
+          maxPrice,
+          thesis,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "proposal rejected");
+      setThesis("");
+      setMessage("proposal queued. execution still needs treasury approval.");
+      await loadPrediction();
+    } catch (error) {
+      setMessage(error.message || "proposal failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="prediction-zone" id="markets" aria-label="FEESYS prediction market desk">
+      <div className="prediction-head">
+        <p className="panel-label">MARKET OS</p>
+        <h2>prediction desk with receipts</h2>
+        <p>
+          Live market feed in, operator proposal out. No pretend swap button,
+          no fake fill, no vapor dashboard doing jazz hands over missing rails.
+        </p>
+        <div className="prediction-status">
+          <span>mode: {prediction.mode}</span>
+          <span>feed: {prediction.feed.ok ? "live" : "down"}</span>
+          <span>cap: {(prediction.maxPositionBps / 100).toFixed(2)}%</span>
+        </div>
+      </div>
+
+      <div className="market-board">
+        <div className="market-list" aria-label="Live prediction markets">
+          {prediction.markets.length ? prediction.markets.slice(0, 6).map((market) => (
+            <button
+              className={market.id === selectedMarket?.id ? "market-card active" : "market-card"}
+              type="button"
+              key={market.id}
+              onClick={() => {
+                setSelectedId(market.id);
+                setOutcomeIndex(0);
+              }}
+            >
+              <span>{market.venue} / {market.acceptingOrders ? "accepting" : "watch only"}</span>
+              <strong>{market.question}</strong>
+              <small>{money(market.volume24hr)} 24h / {money(market.liquidity)} liq</small>
+            </button>
+          )) : (
+            <div className="market-card empty">
+              <span>feed missing</span>
+              <strong>live prediction markets not available</strong>
+              <small>{prediction.feed.error || "no fake markets displayed"}</small>
+            </div>
+          )}
+        </div>
+
+        <form className="proposal-panel" onSubmit={queueProposal}>
+          <div className="proposal-title">
+            <span>{selectedMarket?.venue || "venue"}</span>
+            <strong>{selectedMarket?.question || "select a live market"}</strong>
+          </div>
+
+          <div className="outcome-grid">
+            {(selectedMarket?.outcomes || ["Yes", "No"]).map((outcome, index) => (
+              <button
+                className={index === outcomeIndex ? "outcome-button active" : "outcome-button"}
+                type="button"
+                key={outcome}
+                onClick={() => setOutcomeIndex(index)}
+              >
+                <strong>{outcome}</strong>
+                <span>{probability(selectedMarket?.prices?.[index])}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="trade-controls">
+            <label>
+              Side
+              <select value={side} onChange={(event) => setSide(event.target.value)}>
+                <option value="yes">Yes side</option>
+                <option value="no">No side</option>
+              </select>
+            </label>
+            <label>
+              Max spend
+              <input
+                value={maxSpend}
+                onChange={(event) => setMaxSpend(event.target.value)}
+                inputMode="decimal"
+                placeholder="50"
+              />
+            </label>
+            <label>
+              Limit price
+              <input
+                value={maxPrice}
+                onChange={(event) => setMaxPrice(event.target.value)}
+                inputMode="decimal"
+                placeholder="0.50"
+              />
+            </label>
+          </div>
+
+          <textarea
+            value={thesis}
+            onChange={(event) => setThesis(event.target.value)}
+            placeholder="why should the treasury even consider this?"
+            maxLength={700}
+          />
+          <button type="submit" disabled={busy || !selectedMarket}>
+            queue operator proposal
+          </button>
+          {message ? <p className="proposal-message">{message}</p> : null}
+          <ul className="prediction-rails">
+            {prediction.rails.map((rail) => <li key={rail}>{rail}</li>)}
+          </ul>
+        </form>
+
+        <div className="proposal-queue">
+          <div className="ledger-head">
+            <span>{prediction.proposals.length} queued</span>
+            <strong>execution queue</strong>
+          </div>
+          {prediction.proposals.length ? prediction.proposals.map((proposal) => (
+            <div className="queued-proposal" key={proposal.id}>
+              <span>{proposal.status} / {proposal.mode}</span>
+              <strong>{proposal.outcome} {proposal.side.toUpperCase()}</strong>
+              <p>{proposal.question}</p>
+              <small>{proposal.maxSpend} at {proposal.maxPrice} max / {proposal.author}</small>
+            </div>
+          )) : (
+            <div className="queued-proposal">
+              <span>empty</span>
+              <strong>no treasury action queued</strong>
+              <p>Use the AOS empty-wallet test, then queue a proposal from a live market.</p>
+              <small>still proposal-only until execution rails exist</small>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function App() {
   return (
     <main className="page">
       <section className="ticker" aria-label="meme ticker">
         <div>
           FEESYS AOS / HOLDERS WRITE THE THESIS / TREASURY READS ON CHAIN /
-          TELEGRAM REMEMBERS / THE LORE HAS PERMISSIONS NOW /
+          MARKET FEED IS REAL / TELEGRAM REMEMBERS / THE LORE HAS PERMISSIONS NOW /
         </div>
       </section>
 
       <nav className="quick-nav" aria-label="FEESYS sections">
+        <a href="#markets">markets</a>
         <a href="#treasury">treasury</a>
         <a href="#aos">AOS</a>
         <a href="#chat">AI chat</a>
@@ -638,8 +874,8 @@ function App() {
           </div>
           <div className="stat-strip" aria-label="FEESYS system status">
             <span>token gate wired</span>
+            <span>market feed live</span>
             <span>treasury waits for wallet</span>
-            <span>receipts before claims</span>
           </div>
         </div>
         <div className="idol-wrap" aria-label="FEESYS trading shrine">
@@ -647,6 +883,8 @@ function App() {
           <div className="artifact-badge">AOS ONLINE</div>
         </div>
       </section>
+
+      <PredictionOS />
 
       <TreasuryOS />
 
